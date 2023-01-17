@@ -154,6 +154,21 @@ func (mc *MapCodec) DecodeValue(dc DecodeContext, vr bsonrw.ValueReader, val ref
 		return fmt.Errorf("cannot decode %v into a %s", vrType, val.Type())
 	}
 
+	// reuse struct decoder from cache to get struct infos
+	var fieldMap *map[string]fieldDescription
+	if dc.Ref != nil {
+		sDecoder, err := dc.LookupDecoder(dc.Ref) // should be struct decoder
+		if err != nil {
+			return err
+		}
+		sd := sDecoder.(*StructCodec)
+		desc, err := sd.DescribeStruct(dc.Registry, dc.Ref)
+		if err != nil {
+			return err
+		}
+		fieldMap = &desc.fm
+	}
+
 	dr, err := vr.ReadDocument()
 	if err != nil {
 		return err
@@ -192,6 +207,14 @@ func (mc *MapCodec) DecodeValue(dc DecodeContext, vr bsonrw.ValueReader, val ref
 		k, err := mc.decodeKey(key, keyType)
 		if err != nil {
 			return err
+		}
+		// if we can't find key in bson described struct, skip this one
+		if fieldMap != nil {
+			v, ok := (*fieldMap)[key]
+			if !ok {
+				continue
+			}
+			dc.Ref = v.Type
 		}
 
 		elem, err := decodeTypeOrValueWithInfo(decoder, eTypeDecoder, dc, vr, eType, true)

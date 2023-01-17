@@ -99,3 +99,38 @@ func unmarshalFromReader(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val 
 
 	return dec.Decode(val)
 }
+
+// UnmarshalExtJSONWithRef reads in a map, and a ref pointer struct (must be pointer, can be nil)
+// it is kind of hack since we changed some decode functions in mongo driver
+// useful when we want to decode json into bson map, but still want a intermediate struct without pointer
+
+// ex:
+// type t struct {
+// 	A string
+// 	B struct {
+// 		B int
+// 	}
+// }
+
+// v := bson.M{}
+// bson.UnmarshalExtJSONWithRef([]byte(`{"a": "123", "b": {"b": 123}}`), true, &v, (*t)(nil))
+func UnmarshalExtJSONWithRef(data []byte, canonical bool, val *M, ref interface{}) error {
+	ejvr, err := bsonrw.NewExtJSONValueReader(bytes.NewReader(data), canonical)
+	if err != nil {
+		return err
+	}
+
+	dec := decPool.Get().(*Decoder)
+	defer decPool.Put(dec)
+
+	err = dec.Reset(ejvr)
+	if err != nil {
+		return err
+	}
+	err = dec.SetContext(bsoncodec.DecodeContext{Registry: DefaultRegistry})
+	if err != nil {
+		return err
+	}
+
+	return dec.DecodeMapWithRef(val, ref)
+}

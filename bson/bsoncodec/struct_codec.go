@@ -111,7 +111,7 @@ func (sc *StructCodec) EncodeValue(r EncodeContext, vw bsonrw.ValueWriter, val r
 		return ValueEncoderError{Name: "StructCodec.EncodeValue", Kinds: []reflect.Kind{reflect.Struct}, Received: val}
 	}
 
-	sd, err := sc.describeStruct(r.Registry, val.Type())
+	sd, err := sc.DescribeStruct(r.Registry, val.Type())
 	if err != nil {
 		return err
 	}
@@ -238,7 +238,7 @@ func (sc *StructCodec) DecodeValue(r DecodeContext, vr bsonrw.ValueReader, val r
 		return fmt.Errorf("cannot decode %v into a %s", vrType, val.Type())
 	}
 
-	sd, err := sc.describeStruct(r.Registry, val.Type())
+	sd, err := sc.DescribeStruct(r.Registry, val.Type())
 	if err != nil {
 		return err
 	}
@@ -404,6 +404,7 @@ type fieldDescription struct {
 	inline    []int
 	encoder   ValueEncoder
 	decoder   ValueDecoder
+	Type      reflect.Type
 }
 
 type byIndex []fieldDescription
@@ -435,7 +436,7 @@ func (bi byIndex) Less(i, j int) bool {
 	return len(bi[i].inline) < len(bi[j].inline)
 }
 
-func (sc *StructCodec) describeStruct(r *Registry, t reflect.Type) (*structDescription, error) {
+func (sc *StructCodec) DescribeStruct(r *Registry, t reflect.Type) (*structDescription, error) {
 	// We need to analyze the struct, including getting the tags, collecting
 	// information about inlining, and create a map of the field name to the field.
 	sc.l.RLock()
@@ -475,6 +476,7 @@ func (sc *StructCodec) describeStruct(r *Registry, t reflect.Type) (*structDescr
 			idx:       i,
 			encoder:   encoder,
 			decoder:   decoder,
+			Type:      sfType,
 		}
 
 		stags, err := sc.parser.ParseStructTags(sf)
@@ -507,7 +509,7 @@ func (sc *StructCodec) describeStruct(r *Registry, t reflect.Type) (*structDescr
 				}
 				fallthrough
 			case reflect.Struct:
-				inlinesf, err := sc.describeStruct(r, sfType)
+				inlinesf, err := sc.DescribeStruct(r, sfType)
 				if err != nil {
 					return nil, err
 				}

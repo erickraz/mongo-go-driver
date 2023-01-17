@@ -133,6 +133,7 @@ type DecodeContext struct {
 	// set to a type that a BSON document cannot be unmarshaled into (e.g. "string"), unmarshalling will result in an
 	// error. DocumentType overrides the Ancestor field.
 	defaultDocumentType reflect.Type
+	Ref                 reflect.Type
 }
 
 // DefaultDocumentM will decode empty documents using the primitive.M type. This behavior is restricted to data typed as
