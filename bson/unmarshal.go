@@ -101,6 +101,7 @@ func unmarshalFromReader(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val 
 }
 
 // UnmarshalExtJSONWithRef reads in a map, and a ref pointer struct (must be pointer, can be nil)
+// Warning: use with caution, works best for depth 1 structs, have problem with multiple level of array
 // it is kind of hack since we changed some decode functions in mongo driver
 // useful when we want to decode json into bson map, but still want a intermediate struct without pointer
 

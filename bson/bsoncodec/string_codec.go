@@ -54,6 +54,9 @@ func (sc *StringCodec) decodeType(dc DecodeContext, vr bsonrw.ValueReader, t ref
 			Received: reflect.Zero(t),
 		}
 	}
+	if dc.Ref != t {
+		return emptyValue, fmt.Errorf("err")
+	}
 
 	var str string
 	var err error

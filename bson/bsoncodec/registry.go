@@ -412,7 +412,6 @@ func (r *Registry) LookupDecoder(t reflect.Type) (ValueDecoder, error) {
 	}
 
 	dec, found = r.kindDecoders[t.Kind()]
-	fmt.Printf("type: %T\n", dec)
 	if !found {
 		r.mu.Lock()
 		r.typeDecoders[t] = nil

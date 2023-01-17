@@ -208,6 +208,13 @@ var _ typeDecoder = decodeAdapter{}
 // t and calls decoder.DecodeValue on it.
 func decodeTypeOrValue(decoder ValueDecoder, dc DecodeContext, vr bsonrw.ValueReader, t reflect.Type) (reflect.Value, error) {
 	td, _ := decoder.(typeDecoder)
+	// if dc.Ref != nil && dc.Ref != t && dc.Ref.Kind() != reflect.Struct && !dc.Ref.AssignableTo(t) {
+	// 	// convertible let us fit int into int32
+	// 	// note here has some flaw so we have to
+	// 	if !(t.Kind() == reflect.Int || t.Kind() == reflect.Int32 && dc.Ref.ConvertibleTo(t)) {
+	// 		return reflect.Value{}, fmt.Errorf("can't decode %s into %s , field type incompatible", t, dc.Ref)
+	// 	}
+	// }
 	return decodeTypeOrValueWithInfo(decoder, td, dc, vr, t, true)
 }
 

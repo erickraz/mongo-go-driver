@@ -127,7 +127,7 @@ func (d *Decoder) DecodeMapWithRef(val *M, ref interface{}) error {
 	if err != nil {
 		return err
 	}
-	return decoder.DecodeValue(d.dc, d.vr, reflect.ValueOf(val))
+	return decoder.DecodeValue(d.dc, d.vr, reflect.ValueOf(*val))
 }
 
 // Reset will reset the state of the decoder, using the same *DecodeContext used in
