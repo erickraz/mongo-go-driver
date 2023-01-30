@@ -8,6 +8,7 @@ package bson
 
 import (
 	"bytes"
+	"reflect"
 
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/bsonrw"
@@ -100,10 +101,10 @@ func unmarshalFromReader(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val 
 	return dec.Decode(val)
 }
 
-// UnmarshalExtJSONWithRef reads in a map, and a ref pointer struct (must be pointer, can be nil)
-// Warning: use with caution, works best for depth 1 structs, have problem with multiple level of array
+// UnmarshalExtJSONWithRes reads in a val struct, and a res primitive.M (or []primitive.M)
+// Warning: use with caution, using with custom unmarshaler is a bit tricky
 // it is kind of hack since we changed some decode functions in mongo driver
-// useful when we want to decode json into bson map, but still want a intermediate struct without pointer
+// useful when we want to decode json into struct and have a bson map as byproduct
 
 // ex:
 // type t struct {
@@ -113,9 +114,15 @@ func unmarshalFromReader(dc bsoncodec.DecodeContext, vr bsonrw.ValueReader, val 
 // 	}
 // }
 
-// v := bson.M{}
-// bson.UnmarshalExtJSONWithRef([]byte(`{"a": "123", "b": {"b": 123}}`), true, &v, (*t)(nil))
-func UnmarshalExtJSONWithRef(data []byte, canonical bool, val *M, ref interface{}) error {
+// tmp := t{}
+// res := primitive.M{}
+// err := bson.UnmarshalExtJSONWithRes([]byte(`{"a": "123", "b": {"b": 123}}`), true, &tmp, &res)
+// {123 {true}} // tmp
+// map[a:123 b:map[b:true]] // res
+
+// note: multiple level of map might not work as expected
+
+func UnmarshalExtJSONWithRes(data []byte, canonical bool, val, res interface{}) error {
 	ejvr, err := bsonrw.NewExtJSONValueReader(bytes.NewReader(data), canonical)
 	if err != nil {
 		return err
@@ -128,10 +135,19 @@ func UnmarshalExtJSONWithRef(data []byte, canonical bool, val *M, ref interface{
 	if err != nil {
 		return err
 	}
-	err = dec.SetContext(bsoncodec.DecodeContext{Registry: DefaultRegistry})
+	var vM = new(reflect.Value)
+
+	err = dec.SetContext(bsoncodec.DecodeContext{Registry: DefaultRegistry, ValM: vM, SetVal: true})
 	if err != nil {
 		return err
 	}
+	// TODO: check val being struct
+	// TODO: validate res being primitive.M or []primitive.M
+	err = dec.Decode(val)
+	if err != nil {
+		return err
+	}
+	reflect.ValueOf(res).Elem().Set(*vM)
 
-	return dec.DecodeMapWithRef(val, ref)
+	return err
 }

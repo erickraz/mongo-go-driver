@@ -133,7 +133,9 @@ type DecodeContext struct {
 	// set to a type that a BSON document cannot be unmarshaled into (e.g. "string"), unmarshalling will result in an
 	// error. DocumentType overrides the Ancestor field.
 	defaultDocumentType reflect.Type
-	Ref                 reflect.Type
+	// for passing down a map that records result fields
+	ValM   *reflect.Value
+	SetVal bool
 }
 
 // DefaultDocumentM will decode empty documents using the primitive.M type. This behavior is restricted to data typed as
@@ -208,13 +210,6 @@ var _ typeDecoder = decodeAdapter{}
 // t and calls decoder.DecodeValue on it.
 func decodeTypeOrValue(decoder ValueDecoder, dc DecodeContext, vr bsonrw.ValueReader, t reflect.Type) (reflect.Value, error) {
 	td, _ := decoder.(typeDecoder)
-	// if dc.Ref != nil && dc.Ref != t && dc.Ref.Kind() != reflect.Struct && !dc.Ref.AssignableTo(t) {
-	// 	// convertible let us fit int into int32
-	// 	// note here has some flaw so we have to
-	// 	if !(t.Kind() == reflect.Int || t.Kind() == reflect.Int32 && dc.Ref.ConvertibleTo(t)) {
-	// 		return reflect.Value{}, fmt.Errorf("can't decode %s into %s , field type incompatible", t, dc.Ref)
-	// 	}
-	// }
 	return decodeTypeOrValueWithInfo(decoder, td, dc, vr, t, true)
 }
 

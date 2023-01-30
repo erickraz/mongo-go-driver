@@ -113,37 +113,38 @@ func (uic *UIntCodec) decodeType(dc DecodeContext, vr bsonrw.ValueReader, t refl
 		return emptyValue, fmt.Errorf("cannot decode %v into an integer type", vrType)
 	}
 
+	var val reflect.Value
 	switch t.Kind() {
 	case reflect.Uint8:
 		if i64 < 0 || i64 > math.MaxUint8 {
 			return emptyValue, fmt.Errorf("%d overflows uint8", i64)
 		}
 
-		return reflect.ValueOf(uint8(i64)), nil
+		val = reflect.ValueOf(uint8(i64))
 	case reflect.Uint16:
 		if i64 < 0 || i64 > math.MaxUint16 {
 			return emptyValue, fmt.Errorf("%d overflows uint16", i64)
 		}
 
-		return reflect.ValueOf(uint16(i64)), nil
+		val = reflect.ValueOf(uint16(i64))
 	case reflect.Uint32:
 		if i64 < 0 || i64 > math.MaxUint32 {
 			return emptyValue, fmt.Errorf("%d overflows uint32", i64)
 		}
 
-		return reflect.ValueOf(uint32(i64)), nil
+		val = reflect.ValueOf(uint32(i64))
 	case reflect.Uint64:
 		if i64 < 0 {
 			return emptyValue, fmt.Errorf("%d overflows uint64", i64)
 		}
 
-		return reflect.ValueOf(uint64(i64)), nil
+		val = reflect.ValueOf(uint64(i64))
 	case reflect.Uint:
 		if i64 < 0 || int64(uint(i64)) != i64 { // Can we fit this inside of an uint
 			return emptyValue, fmt.Errorf("%d overflows uint", i64)
 		}
 
-		return reflect.ValueOf(uint(i64)), nil
+		val = reflect.ValueOf(uint(i64))
 	default:
 		return emptyValue, ValueDecoderError{
 			Name:     "UintDecodeValue",
@@ -151,6 +152,10 @@ func (uic *UIntCodec) decodeType(dc DecodeContext, vr bsonrw.ValueReader, t refl
 			Received: reflect.Zero(t),
 		}
 	}
+	if dc.SetVal {
+		*dc.ValM = val
+	}
+	return val, nil
 }
 
 // DecodeValue is the ValueDecoder for uint types.

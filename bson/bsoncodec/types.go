@@ -52,6 +52,7 @@ var tMaxKey = reflect.TypeOf(primitive.MaxKey{})
 var tD = reflect.TypeOf(primitive.D{})
 var tA = reflect.TypeOf(primitive.A{})
 var tE = reflect.TypeOf(primitive.E{})
+var TM = reflect.TypeOf(primitive.M{})
 
 var tCoreDocument = reflect.TypeOf(bsoncore.Document{})
 var tCoreArray = reflect.TypeOf(bsoncore.Array{})

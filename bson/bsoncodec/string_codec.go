@@ -54,9 +54,6 @@ func (sc *StringCodec) decodeType(dc DecodeContext, vr bsonrw.ValueReader, t ref
 			Received: reflect.Zero(t),
 		}
 	}
-	if dc.Ref != t {
-		return emptyValue, fmt.Errorf("err")
-	}
 
 	var str string
 	var err error
@@ -101,6 +98,10 @@ func (sc *StringCodec) decodeType(dc DecodeContext, vr bsonrw.ValueReader, t ref
 		}
 	default:
 		return emptyValue, fmt.Errorf("cannot decode %v into a string type", vr.Type())
+	}
+
+	if dc.SetVal {
+		*dc.ValM = reflect.ValueOf(str)
 	}
 
 	return reflect.ValueOf(str), nil

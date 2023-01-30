@@ -347,6 +347,10 @@ func (dvd DefaultValueDecoders) IntDecodeValue(dc DecodeContext, vr bsonrw.Value
 		return err
 	}
 
+	if dc.SetVal {
+		*dc.ValM = elem
+	}
+
 	val.SetInt(elem.Int())
 	return nil
 }
@@ -506,6 +510,10 @@ func (dvd DefaultValueDecoders) FloatDecodeValue(ec DecodeContext, vr bsonrw.Val
 	elem, err := dvd.floatDecodeType(ec, vr, val.Type())
 	if err != nil {
 		return err
+	}
+
+	if ec.SetVal {
+		*ec.ValM = elem
 	}
 
 	val.SetFloat(elem.Float())
@@ -775,6 +783,10 @@ func (dvd DefaultValueDecoders) ObjectIDDecodeValue(dc DecodeContext, vr bsonrw.
 		return err
 	}
 
+	if dc.SetVal {
+		*dc.ValM = elem
+	}
+
 	val.Set(elem)
 	return nil
 }
@@ -816,6 +828,10 @@ func (dvd DefaultValueDecoders) DateTimeDecodeValue(dc DecodeContext, vr bsonrw.
 	elem, err := dvd.dateTimeDecodeType(dc, vr, tDateTime)
 	if err != nil {
 		return err
+	}
+
+	if dc.SetVal {
+		*dc.ValM = elem
 	}
 
 	val.Set(elem)
@@ -988,6 +1004,10 @@ func (dvd DefaultValueDecoders) TimestampDecodeValue(dc DecodeContext, vr bsonrw
 		return err
 	}
 
+	if dc.SetVal {
+		*dc.ValM = elem
+	}
+
 	val.Set(elem)
 	return nil
 }
@@ -1115,6 +1135,10 @@ func (dvd DefaultValueDecoders) Decimal128DecodeValue(dctx DecodeContext, vr bso
 		return err
 	}
 
+	if dctx.SetVal {
+		*dctx.ValM = elem
+	}
+
 	val.Set(elem)
 	return nil
 }
@@ -1172,6 +1196,10 @@ func (dvd DefaultValueDecoders) JSONNumberDecodeValue(dc DecodeContext, vr bsonr
 	elem, err := dvd.jsonNumberDecodeType(dc, vr, tJSONNumber)
 	if err != nil {
 		return err
+	}
+
+	if dc.SetVal {
+		*dc.ValM = elem
 	}
 
 	val.Set(elem)
@@ -1242,6 +1270,10 @@ func (dvd DefaultValueDecoders) TimeDecodeValue(dc DecodeContext, vr bsonrw.Valu
 
 	if !val.CanSet() || val.Type() != tTime {
 		return ValueDecoderError{Name: "TimeDecodeValue", Types: []reflect.Type{tTime}, Received: val}
+	}
+
+	if dc.SetVal {
+		*dc.ValM = reflect.ValueOf(time.Unix(dt/1000, dt%1000*1000000).UTC())
 	}
 
 	val.Set(reflect.ValueOf(time.Unix(dt/1000, dt%1000*1000000).UTC()))
@@ -1459,10 +1491,13 @@ func (dvd DefaultValueDecoders) ValueUnmarshalerDecodeValue(dc DecodeContext, vr
 		val.Set(reflect.New(val.Type().Elem()))
 	}
 
+	// TODO: not a good way to solve pointer, find a better way? Maybe putting pointer in map is accepctable
+	var isPointer bool
 	if !val.Type().Implements(tValueUnmarshaler) {
 		if !val.CanAddr() {
 			return ValueDecoderError{Name: "ValueUnmarshalerDecodeValue", Types: []reflect.Type{tValueUnmarshaler}, Received: val}
 		}
+		isPointer = true
 		val = val.Addr() // If the type doesn't implement the interface, a pointer to it must.
 	}
 
@@ -1476,6 +1511,15 @@ func (dvd DefaultValueDecoders) ValueUnmarshalerDecodeValue(dc DecodeContext, vr
 	if !errVal.IsNil() {
 		return errVal.Interface().(error)
 	}
+
+	if dc.SetVal {
+		if isPointer {
+			*dc.ValM = val.Elem()
+		} else {
+			*dc.ValM = val
+		}
+	}
+
 	return nil
 }
 
@@ -1509,10 +1553,13 @@ func (dvd DefaultValueDecoders) UnmarshalerDecodeValue(dc DecodeContext, vr bson
 		return nil
 	}
 
+	// TODO: not a good way to solve pointer, find a better way? Maybe putting pointer in map is accepctable
+	var isPointer bool
 	if !val.Type().Implements(tUnmarshaler) {
 		if !val.CanAddr() {
 			return ValueDecoderError{Name: "UnmarshalerDecodeValue", Types: []reflect.Type{tUnmarshaler}, Received: val}
 		}
+		isPointer = true
 		val = val.Addr() // If the type doesn't implement the interface, a pointer to it must.
 	}
 
@@ -1521,6 +1568,15 @@ func (dvd DefaultValueDecoders) UnmarshalerDecodeValue(dc DecodeContext, vr bson
 	if !errVal.IsNil() {
 		return errVal.Interface().(error)
 	}
+
+	if dc.SetVal {
+		if isPointer {
+			*dc.ValM = val.Elem()
+		} else {
+			*dc.ValM = val
+		}
+	}
+
 	return nil
 }
 
@@ -1597,6 +1653,8 @@ func (dvd DefaultValueDecoders) decodeDefault(dc DecodeContext, vr bsonrw.ValueR
 	}
 	eTypeDecoder, _ := decoder.(typeDecoder)
 
+	var elemsM []reflect.Value
+
 	idx := 0
 	for {
 		vr, err := ar.ReadValue()
@@ -1613,6 +1671,25 @@ func (dvd DefaultValueDecoders) decodeDefault(dc DecodeContext, vr bsonrw.ValueR
 		}
 		elems = append(elems, elem)
 		idx++
+
+		if dc.SetVal {
+			elemsM = append(elemsM, *dc.ValM)
+		}
+
+	}
+
+	if dc.SetVal {
+		var sliceType reflect.Type
+		if len(elems) == 0 {
+			sliceType = val.Type()
+		} else {
+			sliceType = reflect.SliceOf(elemsM[0].Type())
+		}
+		slice := reflect.MakeSlice(sliceType, 0, len(elems))
+		*dc.ValM = reflect.New(slice.Type()).Elem()
+		dc.ValM.Set(slice)
+		dc.ValM.SetLen(0)
+		dc.ValM.Set(reflect.Append(*dc.ValM, elemsM...))
 	}
 
 	return elems, nil

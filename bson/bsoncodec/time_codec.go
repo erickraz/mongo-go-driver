@@ -98,6 +98,11 @@ func (tc *TimeCodec) decodeType(dc DecodeContext, vr bsonrw.ValueReader, t refle
 	if !tc.UseLocalTimeZone {
 		timeVal = timeVal.UTC()
 	}
+
+	if dc.SetVal {
+		*dc.ValM = reflect.ValueOf(timeVal)
+	}
+
 	return reflect.ValueOf(timeVal), nil
 }
 

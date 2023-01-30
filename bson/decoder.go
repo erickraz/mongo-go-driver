@@ -14,7 +14,6 @@ import (
 
 	"go.mongodb.org/mongo-driver/bson/bsoncodec"
 	"go.mongodb.org/mongo-driver/bson/bsonrw"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 // ErrDecodeToNil is the error returned when trying to decode to a nil value
@@ -97,7 +96,6 @@ func (d *Decoder) Decode(val interface{}) error {
 	default:
 		return fmt.Errorf("argument to Decode must be a pointer or a map, but got %v", rval)
 	}
-	fmt.Println("rval.Type()", rval.Type())
 	decoder, err := d.dc.LookupDecoder(rval.Type())
 	if err != nil {
 		return err
@@ -109,25 +107,6 @@ func (d *Decoder) Decode(val interface{}) error {
 		d.dc.DefaultDocumentD()
 	}
 	return decoder.DecodeValue(d.dc, d.vr, rval)
-}
-
-var tM = reflect.TypeOf(primitive.M{})
-
-// DecodeMapWithRef is a customized function that we deocde in to val with ref struct
-func (d *Decoder) DecodeMapWithRef(val *M, ref interface{}) error {
-	refType := reflect.TypeOf(ref)
-	switch refType.Kind() {
-	case reflect.Ptr:
-	default:
-		return fmt.Errorf("argument to DecodeMapWithRef must be a pointer, but got %v", refType)
-	}
-	// store root ref in context, will be change between layers
-	d.dc.Ref = reflect.TypeOf(ref).Elem()
-	decoder, err := d.dc.LookupDecoder(tM)
-	if err != nil {
-		return err
-	}
-	return decoder.DecodeValue(d.dc, d.vr, reflect.ValueOf(*val))
 }
 
 // Reset will reset the state of the decoder, using the same *DecodeContext used in

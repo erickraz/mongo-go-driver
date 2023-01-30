@@ -92,6 +92,10 @@ func (bsc *ByteSliceCodec) decodeType(dc DecodeContext, vr bsonrw.ValueReader, t
 		return emptyValue, err
 	}
 
+	if dc.SetVal {
+		*dc.ValM = reflect.ValueOf(data)
+	}
+
 	return reflect.ValueOf(data), nil
 }
 
